@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ocean Waves in Motion</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f4f8fc;--card:#fff;--ink:#14213d;--mut:#4a5a78;--navy:#0b2447;--blue:#2e6fbf;--line:#cfd8e6;--sea:#bfdff5;--sand:#d9c79a;--accent:#c0392b;--tint:#eaf3fb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a1220;--card:#111c31;--ink:#e6eefb;--mut:#9db0cf;--navy:#06101f;--blue:#6aa8f0;--line:#243453;--sea:#1b4a7a;--sand:#6b5f3e;--accent:#ff8a75;--tint:#16243d}}
+:root[data-theme="dark"]{--bg:#0a1220;--card:#111c31;--ink:#e6eefb;--mut:#9db0cf;--navy:#06101f;--blue:#6aa8f0;--line:#243453;--sea:#1b4a7a;--sand:#6b5f3e;--accent:#ff8a75;--tint:#16243d}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Calibri,Carlito,"Segoe UI",system-ui,sans-serif;font-size:16px;line-height:1.5}
+main{max-width:920px;margin:0 auto;padding:14px 14px 28px}
+header{background:linear-gradient(135deg,var(--navy),#19376d);color:#fff;border-radius:12px;padding:16px 18px;border-bottom:4px solid var(--blue)}
+h1{margin:0;font-size:1.6rem}header p{margin:4px 0 0;color:#bfd7f2;font-size:.95rem}
+.tabs{display:flex;gap:8px;margin:14px 0 10px;flex-wrap:wrap}
+button{font:inherit;cursor:pointer}
+.tabs button{flex:1 1 220px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-weight:700}
+.tabs button.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+canvas{display:block;width:100%;border-radius:8px;background:var(--card)}
+.ctl{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-top:10px;font-size:.95rem}
+.ctl button{padding:7px 14px;border-radius:8px;border:1px solid var(--blue);background:var(--tint);color:var(--ink);font-weight:700}
+.ctl label{display:flex;align-items:center;gap:8px}
+.ctl input[type=range]{width:130px}
+#info h2{margin:0 0 6px;font-size:1.15rem;color:var(--blue)}
+#info ul{margin:6px 0;padding-left:20px}#info li{margin:5px 0}
+#info b{color:var(--blue)}
+.live{background:var(--tint);border-left:5px solid var(--blue);padding:8px 12px;border-radius:6px;margin-top:8px}
+</style></head>
+<body><main>
+<header><h1>🌊 Ocean Waves in Motion</h1><p>Class 9 · CBSE Social Science · Oceans and Life · Waves</p></header>
+<nav class="tabs"><button id="t1" class="on">1 · Waves in the open sea</button><button id="t2">2 · Waves reaching the shore</button></nav>
+<section class="card">
+<canvas id="cv" role="img" aria-label="Animated ocean waves with labels"></canvas>
+<div class="ctl">
+<button id="pp">⏸ Pause</button>
+<label>Wind strength <input id="wind" type="range" min="1" max="5" step="1" value="3"><b id="wv">Moderate</b></label>
+<label>Speed <input id="spd" type="range" min="0.3" max="2" step="0.1" value="1"></label>
+<label id="l1"><input id="lb" type="checkbox" checked> Labels</label>
+<label id="l2"><input id="dt" type="checkbox" checked> Water particles</label>
+</div></section>
+<section class="card" id="info"></section>
+</main>
+<script>
+const $=s=>document.querySelector(s),cv=$('#cv'),ctx=cv.getContext('2d');
+let W=0,H=340,view=1,t=0,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,last=performance.now();
+const st={wind:3,speed:1,labels:true,dots:true},NAMES=['Light','Gentle','Moderate','Strong','Very strong'];
+function size(){const d=devicePixelRatio||1;W=cv.parentElement.clientWidth-24;H=Math.round(Math.min(400,Math.max(290,W*.55)));cv.width=W*d;cv.height=H*d;cv.style.height=H+'px';ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',size);size();
+const col=k=>getComputedStyle(document.documentElement).getPropertyValue('--'+k).trim();
+function txt(s,x,y,c,sz,al,a){ctx.save();if(a!==undefined)ctx.globalAlpha*=a;ctx.fillStyle=c;ctx.font='700 '+sz+'px Calibri,Carlito,"Segoe UI",sans-serif';ctx.textAlign=al||'center';ctx.fillText(s,x,y);ctx.restore()}
+function arrow(x1,y1,x2,y2,c){const a=Math.atan2(y2-y1,x2-x1);ctx.strokeStyle=c;ctx.fillStyle=c;ctx.lineWidth=1.6;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+for(const [x,y,d] of [[x2,y2,0],[x1,y1,Math.PI]]){ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-7*Math.cos(a+d-.4),y-7*Math.sin(a+d-.4));ctx.lineTo(x-7*Math.cos(a+d+.4),y-7*Math.sin(a+d+.4));ctx.closePath();ctx.fill()}}
+const fs=()=>W<520?11:13;
+
+function openSea(){
+const s=st.wind,lam=W*(.16+.05*s),A=5+s*6,k=2*Math.PI/lam,T=3,om=2*Math.PI/T,c=lam/T,base=H*.4,ds=Math.min(46,(H-base-26)/3.2),
+ink=col('ink'),blue=col('blue'),acc=col('accent'),mut=col('mut'),f=fs();
+ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=3)ctx.lineTo(x,base-A*Math.cos(k*x-om*t));ctx.lineTo(W,H);ctx.closePath();ctx.fillStyle=col('sea');ctx.fill();
+ctx.beginPath();for(let x=0;x<=W;x+=3){const y=base-A*Math.cos(k*x-om*t);x?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.strokeStyle=blue;ctx.lineWidth=3.2;ctx.stroke();
+ctx.setLineDash([6,5]);ctx.strokeStyle=mut;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,base);ctx.lineTo(W,base);ctx.stroke();ctx.setLineDash([]);
+txt('Still water level',W-6,base+14,mut,f-1,'right');
+txt('Wind →',8,18,ink,f,'left');txt('Wave energy travels →',W-8,18,ink,f,'right');
+const sp=lam/4,iT=Math.floor((W*.7-24)/sp);
+if(st.dots){for(let i=0;24+i*sp<W-8;i++){const x0=24+i*sp,th=k*x0-om*t;
+for(let d=0;d<4;d++){const r=A*Math.exp(-k*d*ds),px=x0-r*Math.sin(th),py=base+d*ds-r*Math.cos(th),tr=i===iT;
+if(tr){ctx.setLineDash([4,4]);ctx.strokeStyle=acc;ctx.lineWidth=1.3;ctx.beginPath();ctx.arc(x0,base+d*ds,Math.max(r,1),0,7);ctx.stroke();ctx.setLineDash([])}
+ctx.beginPath();ctx.arc(px,py,tr?4.6:3.2,0,7);ctx.fillStyle=tr?acc:ink;ctx.globalAlpha=tr?1:.55;ctx.fill();ctx.globalAlpha=1}}
+const th=k*(24+iT*sp)-om*t,x0=24+iT*sp;
+ctx.beginPath();ctx.arc(x0-A*Math.sin(th),base-A*Math.cos(th),7,0,7);ctx.fillStyle=acc;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+txt('Cork: goes round in a circle',x0,H-8,acc,f,'center');
+txt('Circles get smaller with depth',24,H-8,mut,f-1,'left',W>620?1:0)}
+const off=((c*t)%lam+lam)%lam;
+if(st.labels)for(let n=-1;n<=6;n++){const xc=off+n*lam,xt=xc+lam/2,pc=xt;
+if(xc>16&&xc<W-16)txt('Crest',xc,base-A-9,ink,f,'center');
+if(xt>22&&xt<W-22)txt('Trough',xt,base+A+19,ink,f,'center');
+const al=Math.max(0,1-Math.abs(pc-W/2)/(W*.2));
+if(al>.03&&xc>6&&xc+lam<W-6){ctx.save();ctx.globalAlpha=al;const y=base-A-34;
+arrow(xc,y,xc+lam,y,acc);txt('Wavelength (crest to crest)',pc,y-7,acc,f,'center');
+ctx.setLineDash([3,4]);ctx.strokeStyle=acc;ctx.beginPath();ctx.moveTo(xc,base-A);ctx.lineTo(xc+lam,base-A);ctx.stroke();ctx.setLineDash([]);
+arrow(pc,base+A,pc,base-A,blue);txt('Wave height',pc+8,base+4,blue,f,'left');ctx.restore()}}
+}
+
+function shore(){
+const s=st.wind,sea=H*.34,D0=H*.46,k0=2*Math.PI/(W*.2),om=2*Math.PI/3,A0=3+s*2.2,xe=W*.9,ink=col('ink'),blue=col('blue'),acc=col('accent'),mut=col('mut'),f=fs(),
+dep=x=>x<xe?D0*(1-x/xe):0,bed=x=>x<xe?sea+dep(x):sea-(x-xe)*.5;
+let ph=0,xb=-1;const pts=[];
+for(let x=0;x<=xe;x+=3){const d=Math.max(dep(x),16),k=k0*Math.sqrt(D0/d);ph+=k*3;let A=A0*Math.pow(D0/d,.25);
+if(xb<0&&A>.42*d)xb=x;if(xb>=0)A*=Math.max(.25,1-(x-xb)/(W*.1));
+const th=ph-om*t,b=.35*(1-d/D0);let y=sea-A*(Math.cos(th)+b*Math.cos(2*th));y=Math.min(y,bed(x)-1);pts.push([x,y,th])}
+ctx.beginPath();ctx.moveTo(0,pts[0][1]);for(const p of pts)ctx.lineTo(p[0],p[1]);ctx.lineTo(xe,sea);for(let x=xe;x>=0;x-=3)ctx.lineTo(x,bed(x));ctx.closePath();ctx.fillStyle=col('sea');ctx.fill();
+ctx.beginPath();ctx.moveTo(0,H);for(let x=0;x<=W;x+=3)ctx.lineTo(x,bed(x));ctx.lineTo(W,H);ctx.closePath();ctx.fillStyle=col('sand');ctx.fill();
+ctx.beginPath();pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.strokeStyle=blue;ctx.lineWidth=3;ctx.stroke();
+if(xb>=0)for(const p of pts)if(p[0]>=xb&&Math.cos(p[2])>.55)for(let j=0;j<3;j++){const h=Math.sin(p[0]*12.9+j*78.2+Math.floor(t*8)*3.1)*43758;ctx.beginPath();ctx.arc(p[0]+(h%1)*8-4,p[1]-2-Math.abs((h*7)%1)*7,2.4,0,7);ctx.fillStyle='#fff';ctx.globalAlpha=.9;ctx.fill();ctx.globalAlpha=1}
+ctx.setLineDash([6,5]);ctx.strokeStyle=mut;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,sea);ctx.lineTo(xe,sea);ctx.stroke();ctx.setLineDash([]);
+arrow(14,sea,14,sea+D0,acc);txt('Depth',22,sea+D0/2,acc,f,'left');
+txt('Deep water: long, low, fast waves',W*.12,H-10,ink,f,'left');
+txt('Shallow water: shorter, taller, slower',W*.5,sea+D0*.8,ink,f,'center',W>560?1:0);
+if(xb>=0)txt('Breaking zone',xb+20,sea-A0*3.4-14,acc,f,'center');
+txt('Beach',W*.95,sea-(W*.05)*.5-12,ink,f,'center');txt('Waves →',W*.2,18,ink,f,'center');
+}
+
+const INFO=[
+`<h2>What is happening? (Waves in the open sea)</h2><ul>
+<li>A wave is an <b>up-and-down movement</b> of the water surface. Wind pushes the water and gives it energy.</li>
+<li>Watch the <b>orange cork</b>. It moves in a small circle and comes back near its place. The <b>water does not travel forward; only the wave energy does</b>.</li>
+<li>The dots show <b>water particles</b>. Each moves in a circle. The circles get <b>smaller with depth</b> and become almost zero at about half a wavelength below the surface.</li>
+<li><b>Crest</b> = highest point. <b>Trough</b> = lowest point. <b>Wave height</b> = vertical distance from trough to crest. <b>Wavelength</b> = horizontal distance between two crests.</li>
+<li>Try the <b>wind strength</b> slider: stronger wind (blowing longer, over more open water) makes <b>bigger and longer</b> waves.</li></ul><div class="live" id="live"></div>`,
+`<h2>What is happening? (Waves reaching the shore)</h2><ul>
+<li>As the sea becomes <b>shallow</b>, the bottom of the wave drags on the seabed. The wave <b>slows down</b>.</li>
+<li>The waves bunch up, so the <b>wavelength becomes shorter</b>, while the <b>wave height increases</b>.</li>
+<li>When the wave becomes too tall for the shallow water, the top moves ahead of the bottom and the wave <b>breaks</b>, forming white foam. This is the <b>breaking zone</b>.</li>
+<li>Breaking waves <b>erode</b> cliffs (forming caves, arches and stacks) and <b>deposit</b> sand to make <b>beaches</b>.</li>
+<li>Try a stronger wind: bigger waves break earlier, farther from the beach.</li></ul>`];
+const SIZE=['very small','small','medium','large','very large'];
+function setView(v){view=v;$('#t1').classList.toggle('on',v===1);$('#t2').classList.toggle('on',v===2);$('#l1').style.display=$('#l2').style.display=v===1?'flex':'none';$('#info').innerHTML=INFO[v-1];upd()}
+function upd(){$('#wv').textContent=NAMES[st.wind-1];const l=$('#live');if(l)l.innerHTML='With <b>'+NAMES[st.wind-1].toLowerCase()+'</b> wind: wave height is <b>'+SIZE[st.wind-1]+'</b> and wavelength is <b>'+SIZE[st.wind-1]+'</b>.'}
+$('#t1').onclick=()=>setView(1);$('#t2').onclick=()=>setView(2);
+$('#pp').onclick=()=>{playing=!playing;$('#pp').textContent=playing?'⏸ Pause':'▶ Play'};
+$('#wind').oninput=e=>{st.wind=+e.target.value;upd()};$('#spd').oninput=e=>st.speed=+e.target.value;
+$('#lb').onchange=e=>st.labels=e.target.checked;$('#dt').onchange=e=>st.dots=e.target.checked;
+if(!playing)$('#pp').textContent='▶ Play';
+function frame(now){const dt=Math.min(.05,(now-last)/1000);last=now;if(playing)t+=dt*st.speed;
+ctx.clearRect(0,0,W,H);ctx.fillStyle=col('card');ctx.fillRect(0,0,W,H);view===1?openSea():shore();requestAnimationFrame(frame)}
+setView(1);requestAnimationFrame(frame);
+</script></body></html>
